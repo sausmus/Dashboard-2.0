@@ -351,11 +351,88 @@
       display: block;
     }
 
-    .picker-mode-note {
+    .picker-mode-note-row {
+      position: relative;
+      display: flex;
+      align-items: baseline;
+      gap: 7px;
+      flex-wrap: wrap;
       margin-top: 10px;
+    }
+
+    .picker-mode-note {
       color: #5f6368;
       font-size: 13px;
       line-height: 1.45;
+    }
+
+    .more-info-link {
+      display: none;
+      flex: 0 0 auto;
+      min-height: 0;
+      padding: 0;
+      border: 0;
+      background: transparent;
+      color: #1a73e8;
+      font-size: 13px;
+      font-weight: 700;
+      text-decoration: underline;
+      cursor: pointer;
+    }
+
+    .more-info-link:hover {
+      background: transparent !important;
+      color: #1765cc;
+    }
+
+    .more-info-link.visible {
+      display: inline;
+    }
+
+    .balanced-info-popover {
+      display: none;
+      position: absolute;
+      top: calc(100% + 9px);
+      left: 0;
+      z-index: 500;
+      width: min(440px, 100%);
+      padding: 16px;
+      border: 1px solid #dadce0;
+      border-radius: 12px;
+      background: #ffffff;
+      color: #202124;
+      box-shadow: 0 6px 20px rgba(0,0,0,.16);
+      font-size: 13px;
+      line-height: 1.5;
+      text-align: left;
+    }
+
+    .balanced-info-popover.visible {
+      display: block;
+    }
+
+    .balanced-info-title {
+      margin-bottom: 7px;
+      font-size: 15px;
+      font-weight: 800;
+    }
+
+    .balanced-info-example {
+      margin-top: 11px;
+      padding: 10px 12px;
+      border-radius: 9px;
+      background: #f8f9fa;
+    }
+
+    .balanced-ticket-row {
+      display: flex;
+      justify-content: space-between;
+      gap: 20px;
+      padding: 2px 0;
+    }
+
+    .balanced-ticket-row strong {
+      color: #1a73e8;
     }
 
     .participation-display {
@@ -888,7 +965,41 @@
           </select>
         </div>
 
-        <div id="pickerModeNote" class="picker-mode-note"></div>
+        <div class="picker-mode-note-row">
+          <div id="pickerModeNote" class="picker-mode-note"></div>
+
+          <button
+            id="balancedInfoButton"
+            class="more-info-link"
+            type="button"
+            aria-expanded="false"
+            aria-controls="balancedInfoPopover">
+            More info
+          </button>
+
+          <div
+            id="balancedInfoPopover"
+            class="balanced-info-popover"
+            role="dialog"
+            aria-label="How Balanced Picker works">
+
+            <div class="balanced-info-title">
+              How Balanced Picker Works
+            </div>
+
+            <div>
+              Think of each student as entering a lottery. Students with fewer
+              participation points receive more “tickets,” so they are more
+              likely to be selected. Everyone in the pool still has at least
+              one chance.
+            </div>
+
+            <div
+              id="balancedInfoExample"
+              class="balanced-info-example">
+            </div>
+          </div>
+        </div>
       </div>
 
       <div class="name-display">
@@ -1389,7 +1500,7 @@
         parsed.pickerConfig.strategy = "random";
       }
 
-      if (!["zero", "zero-one", "zero-two", "below-goal", "at-goal", "everyone"].includes(parsed.pickerConfig.target)) {
+      if (!["zero", "zero-one", "zero-two", "below-goal", "at-goal"].includes(parsed.pickerConfig.target)) {
         parsed.pickerConfig.target = "below-goal";
       }
 
@@ -1736,6 +1847,21 @@
   const pickerModeNote =
     document.getElementById(
       "pickerModeNote"
+    );
+
+  const balancedInfoButton =
+    document.getElementById(
+      "balancedInfoButton"
+    );
+
+  const balancedInfoPopover =
+    document.getElementById(
+      "balancedInfoPopover"
+    );
+
+  const balancedInfoExample =
+    document.getElementById(
+      "balancedInfoExample"
     );
 
   const participationDisplay =
@@ -2223,6 +2349,26 @@
   }
 
 
+  function setBalancedInfoOpen(open) {
+
+    const shouldOpen =
+      Boolean(open) &&
+      state.pickerConfig.strategy ===
+        "balanced";
+
+    balancedInfoPopover.classList.toggle(
+      "visible",
+      shouldOpen
+    );
+
+    balancedInfoButton.setAttribute(
+      "aria-expanded",
+      String(shouldOpen)
+    );
+
+  }
+
+
   function updatePickerStrategyUI() {
 
     strategyButtons.forEach(button => {
@@ -2249,6 +2395,55 @@
 
     const goal =
       getParticipationGoal();
+
+    const balancedSelected =
+      state.pickerConfig.strategy ===
+        "balanced";
+
+    balancedInfoButton.classList.toggle(
+      "visible",
+      balancedSelected
+    );
+
+    if (!balancedSelected) {
+      setBalancedInfoOpen(false);
+    }
+
+    const ticketRows = [];
+
+    for (
+      let points = 0;
+      points <= goal;
+      points += 1
+    ) {
+
+      const tickets =
+        Math.max(
+          1,
+          goal + 1 - points
+        );
+
+      const scoreLabel =
+        points === goal
+          ? `${goal}/${goal}+`
+          : `${points}/${goal}`;
+
+      ticketRows.push(
+        `
+          <div class="balanced-ticket-row">
+            <span>${scoreLabel}</span>
+            <strong>${tickets} ticket${tickets === 1 ? "" : "s"}</strong>
+          </div>
+        `
+      );
+
+    }
+
+    balancedInfoExample.innerHTML =
+      `
+        <strong>With a goal of ${goal}:</strong>
+        ${ticketRows.join("")}
+      `;
 
     if (
       state.pickerConfig.strategy ===
@@ -3627,6 +3822,54 @@
     );
 
   });
+
+
+  balancedInfoButton.addEventListener(
+    "click",
+    event => {
+
+      event.stopPropagation();
+
+      setBalancedInfoOpen(
+        !balancedInfoPopover.classList.contains(
+          "visible"
+        )
+      );
+
+    }
+  );
+
+
+  document.addEventListener(
+    "click",
+    event => {
+
+      if (
+        !balancedInfoPopover.contains(
+          event.target
+        ) &&
+        event.target !==
+          balancedInfoButton
+      ) {
+
+        setBalancedInfoOpen(false);
+
+      }
+
+    }
+  );
+
+
+  document.addEventListener(
+    "keydown",
+    event => {
+
+      if (event.key === "Escape") {
+        setBalancedInfoOpen(false);
+      }
+
+    }
+  );
 
 
   targetFilter.addEventListener(
