@@ -885,7 +885,6 @@
             <option value="zero-two">0–2 Points</option>
             <option value="below-goal" selected>Below Goal</option>
             <option value="at-goal">At Goal or Above</option>
-            <option value="everyone">Everyone in Pool</option>
           </select>
         </div>
 
@@ -2133,9 +2132,6 @@
 
         case "at-goal":
           return points >= goal;
-
-        case "everyone":
-          return true;
 
         case "below-goal":
         default:
